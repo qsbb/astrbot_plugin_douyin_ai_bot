@@ -109,7 +109,11 @@ class DouyinAPI:
             return None
 
     async def _get(self, url: str, params: dict = None) -> Optional[dict]:
-        full_url = url + (urlencode(params) if params else "")
+        if params:
+            sep = "&" if "?" in url else "?"
+            full_url = url + sep + urlencode(params)
+        else:
+            full_url = url
         return await self._request("GET", full_url)
 
     async def _post(self, url: str, data: dict = None, json_data: dict = None) -> Optional[dict]:
