@@ -433,147 +433,20 @@ class DouyinAPI:
     # ── QR 码登录 ──
 
     async def get_qrcode(self) -> Optional[dict]:
-        """获取登录二维码信息。
+        """获取登录二维码。
 
-        先访问首页获取 session Cookie，再请求 SSO 端点获取 base64 二维码。
-        Returns:
-            {token, qrcode_url, qrcode_img_url} 或 None
+        Douyin SSO 端点在服务端存在 JS 反爬质询，无法直连获取二维码。
+        此方法返回固定信息，引导用户手动获取 Cookie。
         """
-        headers = {
-            "User-Agent": USER_AGENT,
-            "Referer": "https://creator.douyin.com/",
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "zh-CN,zh;q=0.9",
-        }
-        params = {
-            "aid": "2906",
-            "next": "https://creator.douyin.com/content/manage",
-            "service": "https://creator.douyin.com",
-            "is_vcd": "1",
-            "fp": f"kj5j6uhv_{hashlib.md5(str(time.time()).encode()).hexdigest()[:24]}",
-        }
-        async with aiohttp.ClientSession(
-            headers=headers,
-            timeout=aiohttp.ClientTimeout(total=15),
-        ) as session:
-            try:
-                # 1) 先访问首页获取 session Cookie
-                async with session.get("https://sso.douyin.com/") as _:
-                    pass
-                # 2) 请求二维码
-                async with session.get(API_QR_CODE, params=params) as resp:
-                    text = await resp.text()
-                    import json as json_lib
-                    try:
-                        data = json_lib.loads(text)
-                    except Exception:
-                        logger.warning(f"[DouyinAPI] QR 码响应非 JSON: {text[:200]}")
-                        return None
-
-                    error_code = data.get("error_code", -1)
-                    if error_code == 0:
-                        qr_data = data.get("data", {})
-                        token = qr_data.get("token", "")
-                        qrcode_b64 = qr_data.get("qrcode", "")
-                        if not token:
-                            logger.warning("[DouyinAPI] QR 码响应缺少 token")
-                            return None
-                        qrcode_img_url = (
-                            f"data:image/png;base64,{qrcode_b64}"
-                            if qrcode_b64 else ""
-                        )
-                        return {
-                            "token": token,
-                            "qrcode_url": qrcode_b64,
-                            "qrcode_img_url": qrcode_img_url,
-                        }
-                    msg = data.get("message", "") or data.get("description", "")
-                    logger.warning(f"[DouyinAPI] 获取 QR 码失败: {msg}")
-                    return None
-            except Exception as e:
-                logger.error(f"[DouyinAPI] QR 码请求异常: {e}")
-                return None
+        logger.warning(
+            "[DouyinAPI] 抖音 SSO QR 码接口存在反爬 JS 质询，"
+            "不支持服务端自动获取。请通过 Web 面板手动获取 Cookie。"
+        )
+        return None
 
     async def check_qrcode(self, token: str) -> dict:
-        """检查二维码扫描状态。
-
-        Returns:
-            {status, status_msg, cookies?, user_info?}
-            status: 0=等待扫码, 1=已扫描待确认, 2=已过期, 3=登录成功
-        """
-        headers = {
-            "User-Agent": USER_AGENT,
-            "Referer": "https://creator.douyin.com/",
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "zh-CN,zh;q=0.9",
-        }
-        params = {
-            "aid": "2906",
-            "token": token,
-            "service": "https://creator.douyin.com",
-        }
-        async with aiohttp.ClientSession(
-            headers=headers,
-            timeout=aiohttp.ClientTimeout(total=15),
-        ) as session:
-            try:
-                # 先访问首页获取 session Cookie
-                async with session.get("https://sso.douyin.com/") as _:
-                    pass
-
-                async with session.get(API_QR_CHECK, params=params) as resp:
-                    text = await resp.text()
-                    import json as json_lib
-                    try:
-                        data = json_lib.loads(text)
-                    except Exception:
-                        logger.warning(f"[DouyinAPI] QR 码检查非 JSON: {text[:200]}")
-                        return {"status": -1, "status_msg": "返回格式异常"}
-
-                    result = {
-                        "status": -1,
-                        "status_msg": data.get("message", "") or data.get("description", ""),
-                    }
-
-                    # SSO 端点状态
-                    if data.get("error_code") == 0:
-                        d = data.get("data", {})
-                        is_login = d.get("is_login", False)
-                        result["status"] = 1 if is_login else 0
-                    elif data.get("error_code") == 40001:
-                        result["status"] = 2
-
-                    # 登录成功
-                    if result["status"] == 1 and data.get("data", {}).get("ext_data"):
-                        set_cookies = resp.headers.getall("Set-Cookie", [])
-                        if not set_cookies:
-                            sc = resp.headers.get("Set-Cookie", "")
-                            set_cookies = [sc] if sc else []
-
-                        cookie_parts = []
-                        for sc in set_cookies:
-                            part = sc.split(";")[0].strip()
-                            if part and "=" in part:
-                                cookie_parts.append(part)
-
-                        if cookie_parts:
-                            joined = "; ".join(cookie_parts)
-                            result["cookies"] = joined
-                            self._cookie = joined
-                            self._headers["Cookie"] = joined
-
-                        result["status"] = 3  # 成功
-                        nick = await self.get_user_name()
-                        uid = await self.get_user_id()
-                        result["user_info"] = {
-                            "user_id": uid or "",
-                            "nickname": nick or "",
-                        }
-
-                    return result
-            except Exception as e:
-                logger.error(f"[DouyinAPI] QR 码检查异常: {e}")
-                return {"status": -1, "status_msg": str(e)}
+        """占位：二维码状态检查（当前不可用）。"""
+        return {"status": -1, "status_msg": "QR 码登录不可用，请手动输入 Cookie"}
 
     async def get_cookie_from_session(self) -> str:
         """从当前 session 中提取完整 Cookie 字符串。"""

@@ -902,35 +902,21 @@ class DouyinBot(Star):
         })
 
     async def _web_qrcode(self):
-        """获取登录二维码。"""
-        from astrbot.api.web import json_response, error_response
-        try:
-            result = await self.api.get_qrcode()
-            if result:
-                return json_response({
-                    "ok": True,
-                    "token": result["token"],
-                    "qrcode_url": result["qrcode_url"],
-                    "qrcode_img_url": result["qrcode_img_url"],
-                })
-            return error_response("获取二维码失败", status_code=500)
-        except Exception as e:
-            logger.error(f"[DouyinBot] QR 码 API 异常: {e}")
-            return error_response(str(e), status_code=500)
+        """获取登录二维码（不可用，返回说明）。"""
+        from astrbot.api.web import json_response
+        return json_response({
+            "ok": False,
+            "message": "抖音 SSO 存在反爬机制，不支持服务端自动扫码。请手动获取 Cookie：\n"
+                       "1. 浏览器打开 https://www.douyin.com 并登录\n"
+                       "2. 按 F12 → Application → Cookies → www.douyin.com\n"
+                       "3. 复制全部 Cookie 值\n"
+                       "4. 在下方「手动输入 Cookie」处粘贴保存",
+        })
 
     async def _web_qrcode_check(self):
-        """检查二维码扫描状态。"""
-        from astrbot.api.web import json_response, error_response
-        from astrbot.api.star import request
-        try:
-            token = request.query.get("token", "")
-            if not token:
-                return error_response("缺少 token 参数", status_code=400)
-            result = await self.api.check_qrcode(token)
-            return json_response(result)
-        except Exception as e:
-            logger.error(f"[DouyinBot] QR 码检查 API 异常: {e}")
-            return error_response(str(e), status_code=500)
+        """检查二维码扫描状态（不可用）。"""
+        from astrbot.api.web import json_response
+        return json_response({"status": -1, "status_msg": "QR 码登录不可用"})
 
     async def _web_get_cookie(self):
         """获取当前 Cookie（部分掩码）。"""

@@ -233,7 +233,7 @@ main {
   .badge.warn { background: #78350f; color: #fcd34d; }
 }
 
-/* ── QR Code Modal ── */
+/* ── Modal / Cookie 获取指引 ── */
 
 .modal-overlay {
   display: none;
@@ -250,68 +250,93 @@ main {
 .modal {
   background: var(--card-bg);
   border-radius: 12px;
-  padding: 24px;
-  width: 400px;
+  padding: 28px 32px;
+  width: 520px;
   max-width: 90vw;
   box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-  text-align: center;
+  text-align: left;
 }
 
 .modal h2 {
-  margin: 0 0 8px;
-  font-size: 18px;
-}
-
-.modal p {
-  color: var(--text-muted);
-  font-size: 13px;
   margin: 0 0 16px;
-}
-
-.modal .qrcode-container {
-  width: 280px;
-  height: 280px;
-  margin: 0 auto 16px;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.modal .qrcode-container img {
-  max-width: 100%;
-  max-height: 100%;
-}
-
-.modal .qrcode-container .placeholder {
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-.modal .qr-status {
-  font-size: 14px;
-  margin-bottom: 12px;
-  min-height: 24px;
+  font-size: 18px;
+  text-align: center;
 }
 
 .modal .modal-actions {
   display: flex;
   gap: 8px;
   justify-content: center;
+  margin-top: 16px;
 }
 
-.modal .loading-spinner {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
+/* 指引步骤 */
+.guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.guide-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.guide-step a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.guide-step a:hover { text-decoration: underline; }
+
+.guide-step code, .guide-step kbd {
+  background: var(--bg-primary);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.guide-step kbd {
+  border: 1px solid var(--border);
+  font-family: inherit;
+}
+
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-right: 6px;
-  vertical-align: middle;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+#modal-cookie-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Cascadia Code", "JetBrains Mono", "Consolas", monospace;
+  font-size: 12px;
+  resize: vertical;
+  box-sizing: border-box;
+  margin-top: 12px;
+}
+
+#modal-cookie-input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 @keyframes spin {

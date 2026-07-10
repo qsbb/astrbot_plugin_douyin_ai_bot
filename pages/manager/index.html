@@ -12,7 +12,7 @@
       <h1>🎬 抖音 <span>AI Bot</span></h1>
       <div class="actions">
         <button id="btn-refresh" type="button" title="刷新状态">🔄 刷新</button>
-        <button id="btn-qrcode" type="button" class="primary" title="扫码登录抖音">📱 扫码登录</button>
+        <button id="btn-qrcode" type="button" class="primary" title="获取抖音 Cookie">🍪 获取 Cookie</button>
         <button id="btn-start" type="button" class="success" title="启动 Bot">▶ 启动</button>
         <button id="btn-stop" type="button" class="danger" title="停止 Bot">⏹ 停止</button>
       </div>
@@ -101,18 +101,45 @@
     </section>
   </main>
 
-  <!-- QR 码弹窗 -->
+  <!-- Cookie 获取指引弹窗 -->
   <div id="qrcode-modal" class="modal-overlay">
     <div class="modal">
-      <h2>📱 抖音扫码登录</h2>
-      <p>打开抖音 App 扫描下方二维码完成登录</p>
-      <div class="qrcode-container" id="qrcode-container">
-        <div class="placeholder">正在生成二维码...</div>
+      <h2>🍪 获取抖音 Cookie</h2>
+      <div id="qrcode-container" class="manual-cookie-guide">
+        <div class="guide-steps">
+          <div class="guide-step">
+            <span class="step-num">1</span>
+            <span>在浏览器中打开 <a href="https://www.douyin.com" target="_blank">www.douyin.com</a> 并登录你的抖音账号</span>
+          </div>
+          <div class="guide-step">
+            <span class="step-num">2</span>
+            <span>按键盘 <kbd>F12</kbd> 打开开发者工具</span>
+          </div>
+          <div class="guide-step">
+            <span class="step-num">3</span>
+            <span>切换到 <code>Application</code> 或 <code>存储</code> 标签页</span>
+          </div>
+          <div class="guide-step">
+            <span class="step-num">4</span>
+            <span>左侧找到 <code>Cookies</code> → 选择 <code>www.douyin.com</code></span>
+          </div>
+          <div class="guide-step">
+            <span class="step-num">5</span>
+            <span>右键任意 Cookie → 「全部复制」或逐一复制所有键值对</span>
+          </div>
+          <div class="guide-step">
+            <span class="step-num">6</span>
+            <span>将复制的 Cookie 粘贴到下方文本框，点击「保存 Cookie」</span>
+          </div>
+        </div>
+        <textarea id="modal-cookie-input" rows="3" placeholder="在此粘贴复制的 Cookie 字符串..."></textarea>
+        <div class="cookie-input-actions">
+          <button id="btn-modal-cookie-save" type="button" class="primary">💾 保存 Cookie</button>
+          <span id="modal-cookie-msg" class="save-msg"></span>
+        </div>
       </div>
-      <div class="qr-status" id="qr-status">等待扫码...</div>
       <div class="modal-actions">
         <button id="btn-qr-close" type="button">关闭</button>
-        <button id="btn-qr-refresh" type="button" class="primary">刷新二维码</button>
       </div>
     </div>
   </div>

@@ -33,9 +33,6 @@ async function apiPost(path, body) {
 
 // ── 状态 ──
 
-let qrPollTimer = null;
-let qrToken = "";
-
 // ── Toast ──
 
 function showToast(msg, isErr = false) {
@@ -141,110 +138,46 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// ── QR 扫码登录 ──
+// ── Cookie 获取弹窗 ──
 
 async function startQrLogin() {
-  const modal = document.getElementById("qrcode-modal");
-  const container = document.getElementById("qrcode-container");
-  const statusEl = document.getElementById("qr-status");
-
-  modal.classList.add("active");
-  container.innerHTML = '<div class="loading-spinner"></div><div class="placeholder">正在生成二维码...</div>';
-  statusEl.textContent = "正在连接抖音...";
-
-  try {
-    const data = await apiGet("qrcode");
-    if (!data || !data.ok) {
-      statusEl.textContent = "❌ 获取二维码失败，请稍后重试";
-      container.innerHTML = '<div class="placeholder">获取失败</div>';
-      return;
-    }
-
-    qrToken = data.token;
-
-    // 显示二维码图片
-    container.innerHTML = `<img src="${data.qrcode_img_url}" alt="抖音登录二维码" />`;
-    statusEl.textContent = "📱 请打开抖音 App 扫描二维码";
-
-    // 开始轮询检查状态
-    startQrPolling();
-  } catch (e) {
-    console.error("QR 码请求失败:", e);
-    statusEl.textContent = "❌ 请求失败: " + (e.message || "未知错误");
-    container.innerHTML = '<div class="placeholder">请求失败</div>';
-  }
-}
-
-function startQrPolling() {
-  const statusEl = document.getElementById("qr-status");
-  let pollCount = 0;
-  const MAX_POLLS = 300; // 5 分钟（1秒/次）
-
-  clearInterval(qrPollTimer);
-  qrPollTimer = setInterval(async () => {
-    pollCount++;
-    if (pollCount > MAX_POLLS) {
-      clearInterval(qrPollTimer);
-      statusEl.textContent = "⏰ 二维码已过期，请刷新重新扫码";
-      return;
-    }
-
-    try {
-      const data = await apiGet(`qrcode/check?token=${qrToken}`);
-      if (!data) return;
-
-      const code = data.status;
-
-      if (code === 3) {
-        // 登录成功！
-        clearInterval(qrPollTimer);
-        statusEl.textContent = "✅ 登录成功！正在获取 Cookie...";
-
-        // 提取 Cookie 并保存
-        if (data.cookies) {
-          const saveResult = await apiPost("cookie", {
-            cookie: data.cookies,
-          });
-
-          if (saveResult && saveResult.ok) {
-            const userName = data.user_info?.nickname || saveResult.user_name || "未知";
-            statusEl.textContent = `✅ 登录成功！用户: ${userName}`;
-
-            // 更新 Cookie 显示
-            const cookieInfo = document.getElementById("cookie-info");
-            cookieInfo.innerHTML =
-              `<div class="cookie-box" title="完整 Cookie 已保存">✅ 已自动获取 Cookie: ${data.cookies.substring(0, 50)}...</div>`;
-
-            showToast(`🎉 抖音登录成功！用户: ${userName}`);
-            loadStatus();
-          } else {
-            statusEl.textContent = "⚠️ 登录成功但 Cookie 保存失败，请重试";
-            showToast("⚠️ Cookie 保存失败", true);
-          }
-        } else {
-          statusEl.textContent = "⚠️ 登录成功但未获取到 Cookie";
-          showToast("⚠️ 未获取到 Cookie，请重试", true);
-        }
-      } else if (code === 1) {
-        statusEl.textContent = "📱 已扫描，请在手机上确认登录...";
-      } else if (code === 2) {
-        clearInterval(qrPollTimer);
-        statusEl.textContent = "❌ 二维码已过期，请刷新";
-        showToast("二维码已过期", true);
-      } else if (code === 0) {
-        // 等待扫码
-        const dots = ".".repeat((pollCount % 3) + 1);
-        statusEl.textContent = `📱 等待扫码${dots}`;
-      }
-    } catch (e) {
-      console.error("QR 轮询失败:", e);
-    }
-  }, 1000);
+  document.getElementById("qrcode-modal").classList.add("active");
 }
 
 function closeQrModal() {
-  clearInterval(qrPollTimer);
   document.getElementById("qrcode-modal").classList.remove("active");
+}
+
+async function saveModalCookie() {
+  const textarea = document.getElementById("modal-cookie-input");
+  const msgEl = document.getElementById("modal-cookie-msg");
+  const cookie = textarea.value.trim();
+
+  if (!cookie) {
+    msgEl.textContent = "⚠️ Cookie 不能为空";
+    msgEl.style.color = "var(--danger)";
+    return;
+  }
+
+  try {
+    const data = await apiPost("cookie", { cookie });
+    if (data && data.ok !== false) {
+      msgEl.textContent = "✅ Cookie 已保存！";
+      msgEl.style.color = "var(--success)";
+      textarea.value = "";
+      closeQrModal();
+      loadStatus();
+      showToast("🍪 Cookie 已保存成功");
+    } else {
+      msgEl.textContent = "❌ 保存失败: " + (data?.message || "未知错误");
+      msgEl.style.color = "var(--danger)";
+    }
+  } catch (e) {
+    msgEl.textContent = "❌ 请求失败: " + (e.message || "");
+    msgEl.style.color = "var(--danger)";
+  }
+
+  setTimeout(() => { msgEl.textContent = ""; }, 3000);
 }
 
 // ── 启动/停止 ──
@@ -327,10 +260,7 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("btn-start").addEventListener("click", startBot);
   document.getElementById("btn-stop").addEventListener("click", stopBot);
   document.getElementById("btn-qr-close").addEventListener("click", closeQrModal);
-  document.getElementById("btn-qr-refresh").addEventListener("click", function () {
-    clearInterval(qrPollTimer);
-    startQrLogin();
-  });
+  document.getElementById("btn-modal-cookie-save").addEventListener("click", saveModalCookie);
   document.getElementById("btn-cookie-save").addEventListener("click", saveManualCookie);
 
   // 点击遮罩关闭弹窗
