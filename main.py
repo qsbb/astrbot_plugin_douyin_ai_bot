@@ -780,11 +780,11 @@ class DouyinBot(Star):
         )
         yield event.plain_result(text)
 
-    # ── 消息事件钩子（分享解析） ──
+    # ── LLM 请求钩子（分享解析 + 记忆注入） ──
 
-    @filter.on_message()
-    async def on_message(self, event: AstrMessageEvent):
-        """监听消息，解析抖音分享链接。"""
+    @filter.on_llm_request()
+    async def on_llm_request(self, event: AstrMessageEvent, req):
+        """解析消息中的抖音分享链接（在 LLM 处理前拦截）。"""
         if not self.config.get("ENABLE_SHARE_PARSE", False):
             return
         try:
@@ -795,7 +795,6 @@ class DouyinBot(Star):
             return
 
         # 检测抖音分享链接
-        import re
         patterns = [
             r"https?://v\.douyin\.com/\w+",
             r"https?://www\.douyin\.com/video/\d+",
