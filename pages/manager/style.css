@@ -333,25 +333,100 @@ main {
   overflow-y: auto;
 }
 
+/* ── 手动 Cookie 输入 ── */
+
+.manual-cookie {
+  margin-top: 16px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 8px 16px 16px;
+}
+
+.manual-cookie summary {
+  cursor: pointer;
+  font-weight: 500;
+  padding: 4px 0;
+  color: var(--text-secondary);
+}
+
+.manual-cookie summary:hover {
+  color: var(--text-primary);
+}
+
+.cookie-input-area {
+  margin-top: 12px;
+}
+
+.cookie-input-area .hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.cookie-input-area .hint code {
+  background: var(--bg-primary);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.cookie-input-area textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Cascadia Code", "JetBrains Mono", "Consolas", monospace;
+  font-size: 12px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.cookie-input-area textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.cookie-input-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.save-msg {
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: opacity 0.3s;
+}
+
 /* ── Toast ── */
 
-.toast {
+#toast {
   position: fixed;
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--card-bg);
-  border: 1px solid var(--border);
+  background: var(--accent);
+  color: #fff;
+  padding: 10px 24px;
   border-radius: 8px;
-  padding: 10px 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  z-index: 2000;
   font-size: 14px;
-  transition: opacity 0.3s;
+  z-index: 1000;
+  transition: opacity 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.toast.hidden { opacity: 0; pointer-events: none; }
-.toast.error { border-color: var(--danger); color: var(--danger); }
+#toast.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#toast.error {
+  background: var(--danger);
+}
 
 /* ── Logs ── */
 

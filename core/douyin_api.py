@@ -433,11 +433,18 @@ class DouyinAPI:
     # ── QR 码登录 ──
 
     async def get_qrcode(self) -> Optional[dict]:
-        """获取登录二维码信息（SSO 端点，返回 base64 图片）。
+        """获取登录二维码信息。
 
+        先访问首页获取 session Cookie，再请求 SSO 端点获取 base64 二维码。
         Returns:
             {token, qrcode_url, qrcode_img_url} 或 None
         """
+        headers = {
+            "User-Agent": USER_AGENT,
+            "Referer": "https://creator.douyin.com/",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "zh-CN,zh;q=0.9",
+        }
         params = {
             "aid": "2906",
             "next": "https://creator.douyin.com/content/manage",
@@ -446,15 +453,23 @@ class DouyinAPI:
             "fp": f"kj5j6uhv_{hashlib.md5(str(time.time()).encode()).hexdigest()[:24]}",
         }
         async with aiohttp.ClientSession(
-            headers={
-                "User-Agent": USER_AGENT,
-                "Referer": "https://creator.douyin.com/",
-            },
+            headers=headers,
             timeout=aiohttp.ClientTimeout(total=15),
         ) as session:
             try:
+                # 1) 先访问首页获取 session Cookie
+                async with session.get("https://sso.douyin.com/") as _:
+                    pass
+                # 2) 请求二维码
                 async with session.get(API_QR_CODE, params=params) as resp:
-                    data = await resp.json()
+                    text = await resp.text()
+                    import json as json_lib
+                    try:
+                        data = json_lib.loads(text)
+                    except Exception:
+                        logger.warning(f"[DouyinAPI] QR 码响应非 JSON: {text[:200]}")
+                        return None
+
                     error_code = data.get("error_code", -1)
                     if error_code == 0:
                         qr_data = data.get("data", {})
@@ -472,56 +487,64 @@ class DouyinAPI:
                             "qrcode_url": qrcode_b64,
                             "qrcode_img_url": qrcode_img_url,
                         }
-                    logger.warning(
-                        f"[DouyinAPI] 获取 QR 码失败: "
-                        f"{data.get('message', '') or data.get('description', '')}"
-                    )
+                    msg = data.get("message", "") or data.get("description", "")
+                    logger.warning(f"[DouyinAPI] 获取 QR 码失败: {msg}")
                     return None
             except Exception as e:
                 logger.error(f"[DouyinAPI] QR 码请求异常: {e}")
                 return None
 
     async def check_qrcode(self, token: str) -> dict:
-        """检查二维码扫描状态（SSO 端点）。
+        """检查二维码扫描状态。
 
         Returns:
             {status, status_msg, cookies?, user_info?}
             status: 0=等待扫码, 1=已扫描待确认, 2=已过期, 3=登录成功
         """
+        headers = {
+            "User-Agent": USER_AGENT,
+            "Referer": "https://creator.douyin.com/",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "zh-CN,zh;q=0.9",
+        }
         params = {
             "aid": "2906",
             "token": token,
             "service": "https://creator.douyin.com",
         }
         async with aiohttp.ClientSession(
-            headers={
-                "User-Agent": USER_AGENT,
-                "Referer": "https://creator.douyin.com/",
-            },
+            headers=headers,
             timeout=aiohttp.ClientTimeout(total=15),
         ) as session:
             try:
+                # 先访问首页获取 session Cookie
+                async with session.get("https://sso.douyin.com/") as _:
+                    pass
+
                 async with session.get(API_QR_CHECK, params=params) as resp:
-                    data = await resp.json()
+                    text = await resp.text()
+                    import json as json_lib
+                    try:
+                        data = json_lib.loads(text)
+                    except Exception:
+                        logger.warning(f"[DouyinAPI] QR 码检查非 JSON: {text[:200]}")
+                        return {"status": -1, "status_msg": "返回格式异常"}
+
                     result = {
                         "status": -1,
                         "status_msg": data.get("message", "") or data.get("description", ""),
                     }
 
-                    # SSO 端点成功状态：error_code=0 且 data.is_login=true
+                    # SSO 端点状态
                     if data.get("error_code") == 0:
                         d = data.get("data", {})
                         is_login = d.get("is_login", False)
-                        if is_login:
-                            result["status"] = 1  # 已扫码，等待确认
-                        else:
-                            result["status"] = 0  # 等待扫码
+                        result["status"] = 1 if is_login else 0
                     elif data.get("error_code") == 40001:
-                        result["status"] = 2  # 已过期
+                        result["status"] = 2
 
-                    # 登录成功（ext_data 包含 Cookie）
+                    # 登录成功
                     if result["status"] == 1 and data.get("data", {}).get("ext_data"):
-                        # 从响应头中提取 Set-Cookie
                         set_cookies = resp.headers.getall("Set-Cookie", [])
                         if not set_cookies:
                             sc = resp.headers.get("Set-Cookie", "")
@@ -534,11 +557,12 @@ class DouyinAPI:
                                 cookie_parts.append(part)
 
                         if cookie_parts:
-                            result["cookies"] = "; ".join(cookie_parts)
-                            self._cookie = "; ".join(cookie_parts)
-                            self._headers["Cookie"] = "; ".join(cookie_parts)
+                            joined = "; ".join(cookie_parts)
+                            result["cookies"] = joined
+                            self._cookie = joined
+                            self._headers["Cookie"] = joined
 
-                        result["status"] = 3  # 标记为成功
+                        result["status"] = 3  # 成功
                         nick = await self.get_user_name()
                         uid = await self.get_user_id()
                         result["user_info"] = {

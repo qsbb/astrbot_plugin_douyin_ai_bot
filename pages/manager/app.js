@@ -277,6 +277,40 @@ async function stopBot() {
   }
 }
 
+// ── 手动保存 Cookie ──
+
+async function saveManualCookie() {
+  const textarea = document.getElementById("cookie-textarea");
+  const msgEl = document.getElementById("cookie-save-msg");
+  const cookie = textarea.value.trim();
+
+  if (!cookie) {
+    msgEl.textContent = "⚠️ Cookie 不能为空";
+    msgEl.style.color = "var(--danger)";
+    return;
+  }
+
+  try {
+    const data = await apiPost("cookie", { cookie });
+    if (data && data.ok !== false) {
+      msgEl.textContent = "✅ Cookie 已保存";
+      msgEl.style.color = "var(--success)";
+      textarea.value = "";
+      loadStatus();
+      showToast("🍪 Cookie 已保存成功");
+    } else {
+      msgEl.textContent = "❌ 保存失败: " + (data?.message || "未知错误");
+      msgEl.style.color = "var(--danger)";
+    }
+  } catch (e) {
+    msgEl.textContent = "❌ 请求失败: " + (e.message || "");
+    msgEl.style.color = "var(--danger)";
+  }
+
+  // 3 秒后清除消息
+  setTimeout(() => { msgEl.textContent = ""; }, 3000);
+}
+
 // ── 全部刷新 ──
 
 async function refreshAll() {
@@ -297,6 +331,7 @@ document.addEventListener("DOMContentLoaded", function () {
     clearInterval(qrPollTimer);
     startQrLogin();
   });
+  document.getElementById("btn-cookie-save").addEventListener("click", saveManualCookie);
 
   // 点击遮罩关闭弹窗
   document.getElementById("qrcode-modal").addEventListener("click", function (e) {

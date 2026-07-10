@@ -76,6 +76,20 @@
       <div id="cookie-info">
         <p style="color: var(--text-muted);">点击「扫码登录」按钮通过抖音 App 扫码获取 Cookie</p>
       </div>
+      <details class="manual-cookie" id="manual-cookie-section">
+        <summary>🖊 手动输入 Cookie（扫码失败时使用）</summary>
+        <div class="cookie-input-area">
+          <p class="hint">
+            打开浏览器 F12 → Application → Cookies → <code>www.douyin.com</code>，
+            复制所有 Cookie 值粘贴到下方
+          </p>
+          <textarea id="cookie-textarea" rows="4" placeholder="粘贴完整 Cookie 字符串..."></textarea>
+          <div class="cookie-input-actions">
+            <button id="btn-cookie-save" type="button" class="primary">💾 保存 Cookie</button>
+            <span id="cookie-save-msg" class="save-msg"></span>
+          </div>
+        </div>
+      </details>
     </section>
 
     <!-- 日志 -->
