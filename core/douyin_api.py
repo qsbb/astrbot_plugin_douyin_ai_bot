@@ -46,7 +46,7 @@ API_QR_CODE = "https://sso.douyin.com/get_qrcode/"
 API_QR_CHECK = "https://sso.douyin.com/check_qrcode/"
 
 # Cookie 有效性检查 URL
-COOKIE_CHECK_URL = "https://www.douyin.com/aweme/v1/web/im/partner/list/"
+COOKIE_CHECK_URL = "https://www.douyin.com/aweme/v1/web/notice/"
 
 
 class DouyinAPI:
@@ -125,7 +125,13 @@ class DouyinAPI:
         """检查 Cookie 是否有效。返回 (是否有效, 描述信息)。"""
         if not self.has_cookie:
             return False, "未配置 Cookie"
-        data = await self._get(COOKIE_CHECK_URL, {"aid": "24", "app_name": "aweme"})
+        params = {
+            "aid": "24",
+            "app_name": "aweme",
+            "count": 1,
+            "build_number": "1.0.1",
+        }
+        data = await self._get(COOKIE_CHECK_URL, params)
         if data is None:
             return False, "网络请求失败"
         if data.get("status_code") == 0:
