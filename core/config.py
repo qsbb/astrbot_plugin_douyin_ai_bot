@@ -1,26 +1,54 @@
-"""抖音插件常量与数据路径配置。"""
+"""抖音插件常量与数据路径配置。
 
-import os
+注意：不要在此模块顶层调用 StarTools.get_data_dir()，
+因为模块导入时插件尚未初始化。DATA_DIR 通过 init_data_dir() 延迟初始化。
+"""
+
 from pathlib import Path
-from astrbot.api.star import StarTools
+from typing import Optional
 
-# 插件数据根目录
-DATA_DIR = StarTools.get_data_dir()
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+# 数据目录（延迟初始化）
+_DATA_DIR: Optional[Path] = None
 
-# 数据文件
-REPLIED_AT_FILE = DATA_DIR / "replied_at.json"
-AFFECTION_FILE = DATA_DIR / "affection.json"
-MEMORY_FILE = DATA_DIR / "memory.json"
-MOOD_FILE = DATA_DIR / "mood.json"
-PERSONALITY_FILE = DATA_DIR / "personality.json"
-SCHEDULE_FILE = DATA_DIR / "schedule.json"
-PROACTIVE_TRIGGER_LOG_FILE = DATA_DIR / "proactive_trigger_log.json"
-DYNAMIC_SCHEDULE_FILE = DATA_DIR / "dynamic_schedule.json"
-WATCH_HISTORY_FILE = DATA_DIR / "watch_history.json"
-BLACKLIST_FILE = DATA_DIR / "blacklist.json"
-USER_PROFILE_FILE = DATA_DIR / "user_profiles.json"
-CONSOLIDATION_FILE = DATA_DIR / "consolidation.json"
+
+def init_data_dir(data_dir: Path) -> None:
+    """初始化数据目录并创建所有文件路径属性。"""
+    global _DATA_DIR, \
+        REPLIED_AT_FILE, AFFECTION_FILE, MEMORY_FILE, \
+        MOOD_FILE, PERSONALITY_FILE, SCHEDULE_FILE, \
+        PROACTIVE_TRIGGER_LOG_FILE, WATCH_HISTORY_FILE, \
+        BLACKLIST_FILE, USER_PROFILE_FILE, CONSOLIDATION_FILE
+    _DATA_DIR = data_dir
+    _DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    REPLIED_AT_FILE = _DATA_DIR / "replied_at.json"
+    AFFECTION_FILE = _DATA_DIR / "affection.json"
+    MEMORY_FILE = _DATA_DIR / "memory.json"
+    MOOD_FILE = _DATA_DIR / "mood.json"
+    PERSONALITY_FILE = _DATA_DIR / "personality.json"
+    SCHEDULE_FILE = _DATA_DIR / "schedule.json"
+    PROACTIVE_TRIGGER_LOG_FILE = _DATA_DIR / "proactive_trigger_log.json"
+    DYNAMIC_SCHEDULE_FILE = _DATA_DIR / "dynamic_schedule.json"
+    WATCH_HISTORY_FILE = _DATA_DIR / "watch_history.json"
+    BLACKLIST_FILE = _DATA_DIR / "blacklist.json"
+    USER_PROFILE_FILE = _DATA_DIR / "user_profiles.json"
+    CONSOLIDATION_FILE = _DATA_DIR / "consolidation.json"
+
+
+# 数据文件（在 init_data_dir 中被赋值）
+REPLIED_AT_FILE: Path = None
+AFFECTION_FILE: Path = None
+MEMORY_FILE: Path = None
+MOOD_FILE: Path = None
+PERSONALITY_FILE: Path = None
+SCHEDULE_FILE: Path = None
+PROACTIVE_TRIGGER_LOG_FILE: Path = None
+DYNAMIC_SCHEDULE_FILE: Path = None
+WATCH_HISTORY_FILE: Path = None
+BLACKLIST_FILE: Path = None
+USER_PROFILE_FILE: Path = None
+CONSOLIDATION_FILE: Path = None
+
 
 # 好感度等级阈值
 AFFECTION_STRANGER = 10       # 陌生人 ≤ 10

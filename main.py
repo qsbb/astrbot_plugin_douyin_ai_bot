@@ -16,13 +16,14 @@ from typing import Optional
 from urllib.parse import urlencode
 
 from astrbot.api.event import filter, AstrMessageEvent
-from astrbot.api.star import Context, Star, register
+from astrbot.api.star import Context, Star, StarTools, register
 from astrbot.api.message_components import Image, Plain
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.provider import ProviderRequest
 
 from .core.config import (
-    DATA_DIR, REPLIED_AT_FILE, AFFECTION_FILE, MEMORY_FILE,
+    init_data_dir,
+    REPLIED_AT_FILE, AFFECTION_FILE, MEMORY_FILE,
     MOOD_FILE, PERSONALITY_FILE, SCHEDULE_FILE,
     PROACTIVE_TRIGGER_LOG_FILE, WATCH_HISTORY_FILE,
     BLACKLIST_FILE, USER_PROFILE_FILE, CONSOLIDATION_FILE,
@@ -55,7 +56,8 @@ class DouyinBot(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
         self.config = config or {}
-        self._ensure_data_dir()
+        # 初始化数据目录（延迟到有了 StarTools 之后）
+        init_data_dir(StarTools.get_data_dir())
 
         # 运行状态
         self._running = False
@@ -85,7 +87,16 @@ class DouyinBot(Star):
         # 初始化核心组件
         cookie = (self.config.get("DOUYIN_COOKIE") or "").strip()
         self.api = DouyinAPI(cookie)
-        self.reply_engine = ReplyEngine(self)
+        self._affection_file = AFFECTION_FILE
+        self._replied_at_file = REPLIED_AT_FILE
+        self.reply_engine = ReplyEngine(
+            self,
+            affection_file=AFFECTION_FILE,
+            replied_at_file=REPLIED_AT_FILE,
+            mood_file=MOOD_FILE,
+            memory_file=MEMORY_FILE,
+            blacklist_file=BLACKLIST_FILE,
+        )
 
         # 自动加载已回复集合
         self._replied_at = set(load_json(REPLIED_AT_FILE, []))
@@ -122,11 +133,6 @@ class DouyinBot(Star):
         await self._stop_bot()
         await self.api.close()
         logger.info("[DouyinBot] 已卸载")
-
-    # ── 数据目录 ──
-
-    def _ensure_data_dir(self):
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     # ── 自动启动 ──
 
@@ -985,7 +991,7 @@ class DouyinBot(Star):
         log_lines = []
         try:
             # 尝试从插件数据目录读取日志
-            log_file = DATA_DIR / "plugin.log"
+            log_file = REPLIED_AT_FILE.parent / "plugin.log"
             if log_file.exists():
                 with open(log_file, "r", encoding="utf-8") as f:
                     lines = f.readlines()

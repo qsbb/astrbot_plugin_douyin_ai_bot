@@ -18,7 +18,6 @@ from .config import (
     AFFECTION_STRANGER, AFFECTION_FAN,
     AFFECTION_ACQUAINTANCE, AFFECTION_FRIEND,
     MOOD_TEMPLATES, FESTIVAL_MOODS,
-    MEMORY_FILE, MOOD_FILE, BLACKLIST_FILE,
 )
 from .utils import load_json, save_json, get_affection_level, truncate_text
 
@@ -26,8 +25,21 @@ from .utils import load_json, save_json, get_affection_level, truncate_text
 class ReplyEngine:
     """评论回复引擎：构建提示词、调用 LLM、管理状态。"""
 
-    def __init__(self, plugin):
+    def __init__(
+        self,
+        plugin,
+        affection_file: Path,
+        replied_at_file: Path,
+        mood_file: Path,
+        memory_file: Path,
+        blacklist_file: Path,
+    ):
         self.plugin = plugin
+        self._affection_file = affection_file
+        self._replied_at_file = replied_at_file
+        self._mood_file = mood_file
+        self._memory_file = memory_file
+        self._blacklist_file = blacklist_file
         self._mood: str = ""
         self._mood_date: str = ""
         self._replied_at: set = set()
@@ -47,24 +59,24 @@ class ReplyEngine:
             else:
                 self._mood = random.choice(MOOD_TEMPLATES)
             self._mood_date = today
-            save_json(MOOD_FILE, {"mood": self._mood, "date": today})
+            save_json(self._mood_file, {"mood": self._mood, "date": today})
         return self._mood
 
     # ── 好感度管理 ──
 
     def get_affection(self, user_id: str) -> int:
         """获取用户好感度。"""
-        aff = load_json(self.plugin._affection_file, {})
+        aff = load_json(self._affection_file, {})
         return aff.get(str(user_id), 0)
 
     def update_affection(self, user_id: str, delta: int) -> int:
         """更新用户好感度，返回新分数。"""
-        aff = load_json(self.plugin._affection_file, {})
+        aff = load_json(self._affection_file, {})
         uid = str(user_id)
         current = aff.get(uid, 0)
         new_score = max(-100, min(100, current + delta))
         aff[uid] = new_score
-        save_json(self.plugin._affection_file, aff)
+        save_json(self._affection_file, aff)
         return new_score
 
     def get_affection_prompt(self, user_id: str) -> str:
@@ -80,16 +92,16 @@ class ReplyEngine:
 
     def is_blacklisted(self, user_id: str) -> bool:
         """检查用户是否在黑名单中。"""
-        bl = load_json(BLACKLIST_FILE, [])
+        bl = load_json(self._blacklist_file, [])
         return str(user_id) in bl
 
     def add_blacklist(self, user_id: str) -> None:
         """将用户加入黑名单。"""
-        bl = load_json(BLACKLIST_FILE, [])
+        bl = load_json(self._blacklist_file, [])
         uid = str(user_id)
         if uid not in bl:
             bl.append(uid)
-            save_json(BLACKLIST_FILE, bl)
+            save_json(self._blacklist_file, bl)
 
     # ── 回复构建 ──
 
@@ -178,7 +190,7 @@ class ReplyEngine:
 
     async def _get_memory_context(self, user_id: str, query: str) -> str:
         """获取与用户相关的记忆上下文（简单关键词匹配）。"""
-        memories = load_json(MEMORY_FILE, [])
+        memories = load_json(self._memory_file, [])
         if not memories:
             return ""
         relevant = []
@@ -204,7 +216,7 @@ class ReplyEngine:
 
     def load_replied_set(self) -> set:
         """加载已回复的通知 ID 集合。"""
-        path = self.plugin._replied_at_file
+        path = self._replied_at_file
         data = load_json(path, [])
         if isinstance(data, list):
             self._replied_at = set(data)
@@ -213,7 +225,7 @@ class ReplyEngine:
     def mark_replied(self, notice_id: str) -> None:
         """标记通知为已回复。"""
         self._replied_at.add(notice_id)
-        path = self.plugin._replied_at_file
+        path = self._replied_at_file
         save_json(path, list(self._replied_at)[-5000:])
 
     def should_reply(self, comment: dict) -> tuple[bool, str]:
