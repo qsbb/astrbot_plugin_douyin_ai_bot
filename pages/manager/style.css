@@ -339,6 +339,33 @@ main {
   border-color: var(--accent);
 }
 
+.cookie-trouble {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.cookie-trouble summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.cookie-trouble summary:hover {
+  color: var(--accent);
+}
+
+.cookie-trouble p {
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+
+.cookie-trouble code {
+  background: var(--bg-primary);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

@@ -624,10 +624,11 @@ class DouyinBot(Star):
                 "用法: /dy Cookie <完整的Cookie>\n\n"
                 "💡 获取方式：\n"
                 "1. 浏览器打开 www.douyin.com 并登录\n"
-                "2. 按 F12 → Network（网络）标签页\n"
-                "3. 刷新页面，点击任意 www.douyin.com 请求\n"
-                "4. 在 Headers 中找到 Cookie 字段\n"
-                "5. 右键 Cookie 值 → 复制值（不要复制 Cookie: 前缀）"
+                "2. F12 → Network → 点击 Fetch/XHR 过滤\n"
+                "3. 打开一个视频，点一下评论区触发请求\n"
+                "4. 点击列表中任意请求 → Headers → 找到 Cookie\n"
+                "5. 右键 Cookie 值 → 复制值（不要复制前缀）\n"
+                "格式示例: sessionid=xxx; ttwid=xxx; ..."
             )
             return
         self._save_cookie(cookie)

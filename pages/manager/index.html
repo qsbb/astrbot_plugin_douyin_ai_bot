@@ -109,29 +109,35 @@
         <div class="guide-steps">
           <div class="guide-step">
             <span class="step-num">1</span>
-            <span>在浏览器中打开 <a href="https://www.douyin.com" target="_blank">www.douyin.com</a> 并登录你的抖音账号</span>
+            <span>浏览器打开 <a href="https://www.douyin.com" target="_blank">www.douyin.com</a>，用手机号/扫码登录账号</span>
           </div>
           <div class="guide-step">
             <span class="step-num">2</span>
-            <span>按键盘 <kbd>F12</kbd> 打开开发者工具，切换到 <code>Network</code>（网络）标签页</span>
+            <span>按 <kbd>F12</kbd> 打开开发者工具，切换到 <code>Network</code>（网络）标签页，点击 <code>Fetch/XHR</code> 过滤</span>
           </div>
           <div class="guide-step">
             <span class="step-num">3</span>
-            <span>刷新页面，在请求列表中点击任意一个 <code>www.douyin.com</code> 的请求</span>
+            <span>随便打开一个视频，点一下评论区（触发接口请求），等列表中出现新请求</span>
           </div>
           <div class="guide-step">
             <span class="step-num">4</span>
-            <span>在右侧 <code>Headers</code>（标头）中找到 <code>Cookie</code> 字段</span>
+            <span>点击列表中任意一个请求，在右侧 <code>Headers</code> 中向下滚动找到 <code>Cookie</code> 字段</span>
           </div>
           <div class="guide-step">
             <span class="step-num">5</span>
-            <span>右键 Cookie 值 → 「复制值」（注意不要复制到 <code>Cookie:</code> 前缀）</span>
+            <span>右键 Cookie 值 → <strong>「复制值」</strong>（不要复制 <code>Cookie:</code> 前缀）</span>
           </div>
           <div class="guide-step">
             <span class="step-num">6</span>
-            <span>将复制的 Cookie 粘贴到下方文本框，点击「保存 Cookie」</span>
+            <span>粘贴到下方文本框，点击「保存 Cookie」。Cookie 格式：<code>sessionid=xxx; ttwid=xxx; ...</code></span>
           </div>
         </div>
+        <details class="cookie-trouble">
+          <summary>🔍 找不到 Cookie？</summary>
+          <p>如果请求 Headers 中没有 Cookie 字段，试试：打开一个视频页面，等页面完全加载后再查看。
+             关键 Cookie 名称：<code>sessionid</code>、<code>ttwid</code>、<code>passport_csrf_token</code>、<code>sid_tt</code>。
+             Cookie 有效期通常几天到几周，过期后重新获取即可。</p>
+        </details>
         <textarea id="modal-cookie-input" rows="3" placeholder="在此粘贴复制的 Cookie 字符串..."></textarea>
         <div class="cookie-input-actions">
           <button id="btn-modal-cookie-save" type="button" class="primary">💾 保存 Cookie</button>
