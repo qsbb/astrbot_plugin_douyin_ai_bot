@@ -1,0 +1,148 @@
+{
+    "DOUYIN_COOKIE": {
+        "description": "【账号】抖音 Cookie（完整 Cookie 字符串）",
+        "type": "string",
+        "default": "",
+        "hint": "浏览器登录抖音后，从开发者工具 Application > Cookies 复制完整 Cookie 字符串"
+    },
+    "DOUYIN_APP_ID": {
+        "description": "【账号】抖音开放平台 AppID（可选）",
+        "type": "string",
+        "default": "",
+        "hint": "使用开放平台 API 时需要，仅 Cookie 模式可留空"
+    },
+    "DOUYIN_APP_SECRET": {
+        "description": "【账号】抖音开放平台 AppSecret（可选）",
+        "type": "string",
+        "default": "",
+        "hint": "使用开放平台 API 时需要"
+    },
+    "OWNER_UID": {
+        "description": "【账号】主人的抖音 UID（好感度特殊处理）",
+        "type": "string",
+        "default": "",
+        "hint": "主人的抖音用户 ID，好感度固定为最高"
+    },
+    "OWNER_NAME": {
+        "description": "【账号】主人名称（用于提示词）",
+        "type": "string",
+        "default": "",
+        "hint": "主人称呼，用于 AI 回复提示词"
+    },
+    "LLM_PROVIDER_ID": {
+        "description": "【人设】选择用于回复的 LLM（留空用 AstrBot 默认）",
+        "type": "string",
+        "default": "",
+        "_special": "select_provider"
+    },
+    "USE_ASTRBOT_PERSONA": {
+        "description": "【人设】使用 AstrBot 自带人设",
+        "type": "bool",
+        "default": true
+    },
+    "CUSTOM_SYSTEM_PROMPT": {
+        "description": "【人设】自定义系统提示词",
+        "type": "text",
+        "default": "你是一个活跃在抖音的角色，会回复评论、看视频、发作品。用自然的口语化风格交流，符合抖音社区氛围。",
+        "hint": "USE_ASTRBOT_PERSONA 关闭时使用此提示词"
+    },
+    "ENABLE_REPLY": {
+        "description": "【功能开关】启用评论自动回复",
+        "type": "bool",
+        "default": true
+    },
+    "POLL_INTERVAL": {
+        "description": "【回复】评论轮询间隔（秒）",
+        "type": "int",
+        "default": 30,
+        "hint": "建议 20-60 秒，太频繁可能触发风控"
+    },
+    "REPLY_COOLDOWN": {
+        "description": "【回复】回复冷却时间（秒）",
+        "type": "int",
+        "default": 15,
+        "hint": "回复一条后等待多久再处理下一条，最低 5 秒"
+    },
+    "REPLY_PROBABILITY_PERCENT": {
+        "description": "【回复】回复概率（%）",
+        "type": "int",
+        "default": 80,
+        "hint": "普通评论按此概率随机回复，100=每条都回。主人/@/高好感不受影响"
+    },
+    "REPLY_ALWAYS_UIDS": {
+        "description": "【回复】必回 UID 白名单",
+        "type": "list",
+        "default": [],
+        "hint": "这些 UID 不受回复概率影响，一定会回复"
+    },
+    "CUSTOM_REPLY_INSTRUCTION": {
+        "description": "【回复】回复评论的补充提示词",
+        "type": "text",
+        "default": "",
+        "hint": "例如：回复要带一点傲娇感，偶尔用抖音热门梗。"
+    },
+    "ENABLE_AFFECTION": {
+        "description": "【功能开关】启用好感度系统",
+        "type": "bool",
+        "default": true
+    },
+    "ENABLE_MOOD": {
+        "description": "【功能开关】启用心情系统",
+        "type": "bool",
+        "default": true
+    },
+    "ENABLE_MEMORY": {
+        "description": "【功能开关】启用语义记忆",
+        "type": "bool",
+        "default": true
+    },
+    "ENABLE_PROACTIVE": {
+        "description": "【功能开关】启用主动刷视频/评论",
+        "type": "bool",
+        "default": false
+    },
+    "PROACTIVE_VIDEO_COUNT": {
+        "description": "【主动行为】每次主动刷几个视频",
+        "type": "int",
+        "default": 3,
+        "hint": "每次触发主动行为时处理几个视频"
+    },
+    "PROACTIVE_TIMES_COUNT": {
+        "description": "【主动行为】每天触发几次主动行为",
+        "type": "int",
+        "default": 3
+    },
+    "PROACTIVE_LIKE": {
+        "description": "【主动行为】主动点赞（≥6分）",
+        "type": "bool",
+        "default": true
+    },
+    "PROACTIVE_COMMENT": {
+        "description": "【主动行为】主动评论（≥7分）",
+        "type": "bool",
+        "default": true
+    },
+    "PROACTIVE_FOLLOW": {
+        "description": "【主动行为】主动关注（≥8分）",
+        "type": "bool",
+        "default": true
+    },
+    "ENABLE_SHARE_PARSE": {
+        "description": "【分享解析】识别群聊里的抖音分享链接",
+        "type": "bool",
+        "default": false,
+        "hint": "开启后，群里有人发抖音分享链接时自动解析"
+    },
+    "SLEEP_START": {
+        "description": "【时段】睡眠开始小时",
+        "type": "int",
+        "default": 2,
+        "hint": "此时间后停止活跃行为，用于日终清算"
+    },
+    "SLEEP_END": {
+        "description": "【时段】睡眠结束小时",
+        "type": "int",
+        "default": 8,
+        "hint": "此时间后恢复活跃行为"
+    }
+}

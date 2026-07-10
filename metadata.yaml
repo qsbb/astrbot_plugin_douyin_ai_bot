@@ -1,0 +1,12 @@
+name: astrbot_plugin_douyin_ai_bot
+display_name: 抖音 AI Bot
+desc: 抖音评论自动回复、好感度系统、语义记忆、主动刷视频、分享解析
+version: 1.0.0
+author: 凌溪
+repo: https://github.com/qsbb/astrbot_plugin_douyin_ai_bot
+tags:
+  - douyin
+  - 抖音
+  - 评论回复
+  - 主动交互
+  - 语义记忆
