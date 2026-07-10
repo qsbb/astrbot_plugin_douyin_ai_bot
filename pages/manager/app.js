@@ -1,9 +1,35 @@
 /**
  * 抖音 AI Bot 管理面板前端逻辑
- * 使用 AstrBot Plugin Pages Bridge API
+ * 使用 AstrBot Plugin Bridge API 或原生 fetch 回退
  */
-const bridge = window.AstrBotPluginPage;
-const API_BASE = "astrbot_plugin_douyin_ai_bot";
+
+// 插件页面 URL 前缀（后端注册的路由前缀）
+const PAGE_PATH = "astrbot_plugin_douyin_ai_bot";
+
+// Bridge API 兼容层：优先用 bridge，不可用时回退到 fetch
+async function apiGet(path) {
+  const bridge = window.AstrBotPluginPage;
+  if (bridge && typeof bridge.apiGet === "function") {
+    return await bridge.apiGet(path);
+  }
+  const resp = await fetch(`/${PAGE_PATH}/${path}`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return await resp.json();
+}
+
+async function apiPost(path, body) {
+  const bridge = window.AstrBotPluginPage;
+  if (bridge && typeof bridge.apiPost === "function") {
+    return await bridge.apiPost(path, body);
+  }
+  const resp = await fetch(`/${PAGE_PATH}/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return await resp.json();
+}
 
 // ── 状态 ──
 
@@ -25,7 +51,7 @@ function showToast(msg, isErr = false) {
 
 async function loadStatus() {
   try {
-    const data = await bridge.apiGet(`${API_BASE}/status`);
+    const data = await apiGet("status");
     if (!data) return;
 
     // 统计卡片
@@ -73,7 +99,7 @@ async function loadStatus() {
 
 async function loadStats() {
   try {
-    const data = await bridge.apiGet(`${API_BASE}/stats`);
+    const data = await apiGet("stats");
     if (!data) return;
     document.getElementById("stat-affection").textContent = data.affection_users ?? "—";
     document.getElementById("stat-memory").textContent = data.memory_entries ?? "—";
@@ -85,7 +111,7 @@ async function loadStats() {
 
 async function loadLogs() {
   try {
-    const data = await bridge.apiGet(`${API_BASE}/logs`);
+    const data = await apiGet("logs");
     const el = document.getElementById("log-content");
     if (data.logs && data.logs.length > 0) {
       el.innerHTML = data.logs.map(l => escapeHtml(l)).join("");
@@ -127,7 +153,7 @@ async function startQrLogin() {
   statusEl.textContent = "正在连接抖音...";
 
   try {
-    const data = await bridge.apiGet(`${API_BASE}/qrcode`);
+    const data = await apiGet("qrcode");
     if (!data || !data.ok) {
       statusEl.textContent = "❌ 获取二维码失败，请稍后重试";
       container.innerHTML = '<div class="placeholder">获取失败</div>';
@@ -164,7 +190,7 @@ function startQrPolling() {
     }
 
     try {
-      const data = await bridge.apiGet(`${API_BASE}/qrcode/check?token=${qrToken}`);
+      const data = await apiGet(`qrcode/check?token=${qrToken}`);
       if (!data) return;
 
       const code = data.status;
@@ -176,7 +202,7 @@ function startQrPolling() {
 
         // 提取 Cookie 并保存
         if (data.cookies) {
-          const saveResult = await bridge.apiPost(`${API_BASE}/cookie`, {
+          const saveResult = await apiPost("cookie", {
             cookie: data.cookies,
           });
 
@@ -225,7 +251,7 @@ function closeQrModal() {
 
 async function startBot() {
   try {
-    const data = await bridge.apiPost(`${API_BASE}/start`, {});
+    const data = await apiPost("start", {});
     if (data && data.ok !== false) {
       showToast("✅ Bot 已启动");
       loadStatus();
@@ -239,7 +265,7 @@ async function startBot() {
 
 async function stopBot() {
   try {
-    const data = await bridge.apiPost(`${API_BASE}/stop`, {});
+    const data = await apiPost("stop", {});
     if (data && data.ok !== false) {
       showToast("⏹ Bot 已停止");
       loadStatus();
