@@ -622,8 +622,12 @@ class DouyinBot(Star):
             yield event.plain_result(
                 "📝 请提供 Cookie 字符串\n"
                 "用法: /dy Cookie <完整的Cookie>\n\n"
-                "💡 获取方式：浏览器打开抖音并登录，按 F12 "
-                "→ Application → Cookies → 复制全部 Cookie 字符串"
+                "💡 获取方式：\n"
+                "1. 浏览器打开 www.douyin.com 并登录\n"
+                "2. 按 F12 → Network（网络）标签页\n"
+                "3. 刷新页面，点击任意 www.douyin.com 请求\n"
+                "4. 在 Headers 中找到 Cookie 字段\n"
+                "5. 右键 Cookie 值 → 复制值（不要复制 Cookie: 前缀）"
             )
             return
         self._save_cookie(cookie)
