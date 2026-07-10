@@ -853,33 +853,43 @@ class DouyinBot(Star):
 
     async def _web_status(self):
         """返回插件状态 JSON。"""
-        valid = False
-        user_info = None
-        if self.api.has_cookie:
-            valid, msg = await self.api.check_cookie()
-            uname = await self.api.get_user_name()
-            uid = await self.api.get_user_id()
-            user_info = {"user_id": uid, "nickname": uname or ""}
+        from astrbot.api.web import json_response, error_response
+        try:
+            valid = False
+            user_info = None
+            if self.api.has_cookie:
+                try:
+                    valid, msg = await self.api.check_cookie()
+                except Exception:
+                    valid = False
+                try:
+                    uname = await self.api.get_user_name()
+                    uid = await self.api.get_user_id()
+                    user_info = {"user_id": uid or "", "nickname": uname or ""}
+                except Exception:
+                    user_info = None
 
-        from astrbot.api.web import json_response
-        return json_response({
-            "cookie_configured": self.api.has_cookie,
-            "cookie_valid": valid,
-            "user_info": user_info,
-            "running": self._running,
-            "reply_enabled": self.config.get("ENABLE_REPLY", True),
-            "proactive_enabled": self.config.get("ENABLE_PROACTIVE", False),
-            "affection_enabled": self.config.get("ENABLE_AFFECTION", True),
-            "memory_enabled": self.config.get("ENABLE_MEMORY", True),
-            "mood_enabled": self.config.get("ENABLE_MOOD", True),
-            "share_parse_enabled": self.config.get("ENABLE_SHARE_PARSE", False),
-            "owner_name": self.config.get("OWNER_NAME", ""),
-            "llm_provider": self.config.get("LLM_PROVIDER_ID", ""),
-            "poll_interval": self.config.get("POLL_INTERVAL", 30),
-            "reply_probability": self.config.get("REPLY_PROBABILITY_PERCENT", 80),
-            "mood": self.reply_engine.get_or_refresh_mood() if hasattr(self, 'reply_engine') else "",
-            "replied_count": len(self._replied_at),
-        })
+            return json_response({
+                "cookie_configured": self.api.has_cookie,
+                "cookie_valid": valid,
+                "user_info": user_info,
+                "running": self._running,
+                "reply_enabled": self.config.get("ENABLE_REPLY", True),
+                "proactive_enabled": self.config.get("ENABLE_PROACTIVE", False),
+                "affection_enabled": self.config.get("ENABLE_AFFECTION", True),
+                "memory_enabled": self.config.get("ENABLE_MEMORY", True),
+                "mood_enabled": self.config.get("ENABLE_MOOD", True),
+                "share_parse_enabled": self.config.get("ENABLE_SHARE_PARSE", False),
+                "owner_name": self.config.get("OWNER_NAME", ""),
+                "llm_provider": self.config.get("LLM_PROVIDER_ID", ""),
+                "poll_interval": self.config.get("POLL_INTERVAL", 30),
+                "reply_probability": self.config.get("REPLY_PROBABILITY_PERCENT", 80),
+                "mood": self.reply_engine.get_or_refresh_mood() if hasattr(self, "reply_engine") else "",
+                "replied_count": len(self._replied_at),
+            })
+        except Exception as e:
+            logger.error(f"[DouyinBot] Web 状态 API 异常: {e}")
+            return error_response(str(e), status_code=500)
 
     async def _web_stats(self):
         """返回插件统计数据。"""
@@ -915,7 +925,8 @@ class DouyinBot(Star):
 
     async def _web_qrcode_check(self):
         """检查二维码扫描状态（不可用）。"""
-        from astrbot.api.web import json_response
+        from astrbot.api.web import json_response, request
+        _ = request.query.get("token", "")
         return json_response({"status": -1, "status_msg": "QR 码登录不可用"})
 
     async def _web_get_cookie(self):
@@ -932,8 +943,7 @@ class DouyinBot(Star):
 
     async def _web_set_cookie(self):
         """设置 Cookie（来自 QR 扫码登录或手动输入）。"""
-        from astrbot.api.web import json_response, error_response
-        from astrbot.api.star import request
+        from astrbot.api.web import json_response, error_response, request
         try:
             payload = await request.json(default={}) or {}
             cookie = (payload.get("cookie") or "").strip()
