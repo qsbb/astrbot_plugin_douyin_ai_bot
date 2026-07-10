@@ -41,9 +41,9 @@ API_DIGG = "https://www.douyin.com/aweme/v1/web/commit/item/digg/?"
 API_SHARE_INFO = "https://www.douyin.com/aweme/v1/web/aweme/share/info/?"
 API_LIVE_INFO = "https://www.douyin.com/aweme/v1/web/live/info/?"
 
-# QR 码登录 API
-API_QR_CODE = "https://www.douyin.com/aweme/v1/web/qrcode/?"
-API_QR_CHECK = "https://www.douyin.com/aweme/v1/web/qrcode/check/?"
+# QR 码登录 API（使用 SSO 端点，返回 base64 图片）
+API_QR_CODE = "https://sso.douyin.com/get_qrcode/"
+API_QR_CHECK = "https://sso.douyin.com/check_qrcode/"
 
 # Cookie 有效性检查 URL
 COOKIE_CHECK_URL = "https://www.douyin.com/aweme/v1/web/im/partner/list/"
@@ -433,106 +433,118 @@ class DouyinAPI:
     # ── QR 码登录 ──
 
     async def get_qrcode(self) -> Optional[dict]:
-        """获取登录二维码信息。
-        
+        """获取登录二维码信息（SSO 端点，返回 base64 图片）。
+
         Returns:
             {token, qrcode_url, qrcode_img_url} 或 None
         """
         params = {
-            "aid": "24",
-            "app_name": "aweme",
-            "service": "https://www.douyin.com",
-            "need_external": "1",
+            "aid": "2906",
+            "next": "https://creator.douyin.com/content/manage",
+            "service": "https://creator.douyin.com",
+            "is_vcd": "1",
+            "fp": f"kj5j6uhv_{hashlib.md5(str(time.time()).encode()).hexdigest()[:24]}",
         }
-        # 使用独立 session（不携带 Cookie），因为这是登录前操作
         async with aiohttp.ClientSession(
             headers={
                 "User-Agent": USER_AGENT,
-                "Referer": DOUYIN_BASE + "/",
+                "Referer": "https://creator.douyin.com/",
             },
             timeout=aiohttp.ClientTimeout(total=15),
         ) as session:
             try:
-                async with session.get(API_QR_CODE + urlencode(params)) as resp:
+                async with session.get(API_QR_CODE, params=params) as resp:
                     data = await resp.json()
-                    if data.get("status_code") == 0:
+                    error_code = data.get("error_code", -1)
+                    if error_code == 0:
                         qr_data = data.get("data", {})
                         token = qr_data.get("token", "")
-                        qrcode_url = qr_data.get("qrcode_url", "")
-                        # 抖音返回的 qrcode_url 可能是短链，也可能是图片 URL
-                        # 使用第三方 QR 生成服务或者直接返回 token 让前端处理
+                        qrcode_b64 = qr_data.get("qrcode", "")
+                        if not token:
+                            logger.warning("[DouyinAPI] QR 码响应缺少 token")
+                            return None
+                        qrcode_img_url = (
+                            f"data:image/png;base64,{qrcode_b64}"
+                            if qrcode_b64 else ""
+                        )
                         return {
                             "token": token,
-                            "qrcode_url": qrcode_url,
-                            "qrcode_img_url": qrcode_url,  # 可直接用于 <img> 或 iframe
+                            "qrcode_url": qrcode_b64,
+                            "qrcode_img_url": qrcode_img_url,
                         }
-                    logger.warning(f"[DouyinAPI] 获取 QR 码失败: {data.get('status_msg', '')}")
+                    logger.warning(
+                        f"[DouyinAPI] 获取 QR 码失败: "
+                        f"{data.get('message', '') or data.get('description', '')}"
+                    )
                     return None
             except Exception as e:
                 logger.error(f"[DouyinAPI] QR 码请求异常: {e}")
                 return None
 
     async def check_qrcode(self, token: str) -> dict:
-        """检查二维码扫描状态。
-        
+        """检查二维码扫描状态（SSO 端点）。
+
         Returns:
             {status, status_msg, cookies?, user_info?}
             status: 0=等待扫码, 1=已扫描待确认, 2=已过期, 3=登录成功
         """
         params = {
-            "aid": "24",
-            "app_name": "aweme",
+            "aid": "2906",
             "token": token,
-            "service": "https://www.douyin.com",
+            "service": "https://creator.douyin.com",
         }
         async with aiohttp.ClientSession(
             headers={
                 "User-Agent": USER_AGENT,
-                "Referer": DOUYIN_BASE + "/",
+                "Referer": "https://creator.douyin.com/",
             },
             timeout=aiohttp.ClientTimeout(total=15),
         ) as session:
             try:
-                async with session.get(API_QR_CHECK + urlencode(params)) as resp:
+                async with session.get(API_QR_CHECK, params=params) as resp:
                     data = await resp.json()
-                    status_code = data.get("status_code", -1)
                     result = {
-                        "status": status_code,
-                        "status_msg": data.get("status_msg", ""),
+                        "status": -1,
+                        "status_msg": data.get("message", "") or data.get("description", ""),
                     }
 
-                    # status_code=3 表示登录成功，从 response cookies 中提取
-                    if status_code == 3:
+                    # SSO 端点成功状态：error_code=0 且 data.is_login=true
+                    if data.get("error_code") == 0:
+                        d = data.get("data", {})
+                        is_login = d.get("is_login", False)
+                        if is_login:
+                            result["status"] = 1  # 已扫码，等待确认
+                        else:
+                            result["status"] = 0  # 等待扫码
+                    elif data.get("error_code") == 40001:
+                        result["status"] = 2  # 已过期
+
+                    # 登录成功（ext_data 包含 Cookie）
+                    if result["status"] == 1 and data.get("data", {}).get("ext_data"):
                         # 从响应头中提取 Set-Cookie
                         set_cookies = resp.headers.getall("Set-Cookie", [])
                         if not set_cookies:
-                            # 兼容不同版本的 aiohttp
-                            set_cookies = resp.headers.get("Set-Cookie", "")
-                            if isinstance(set_cookies, str):
-                                set_cookies = [set_cookies]
+                            sc = resp.headers.get("Set-Cookie", "")
+                            set_cookies = [sc] if sc else []
 
                         cookie_parts = []
                         for sc in set_cookies:
-                            # 取第一个 ';' 之前的 key=value
                             part = sc.split(";")[0].strip()
                             if part and "=" in part:
                                 cookie_parts.append(part)
 
                         if cookie_parts:
                             result["cookies"] = "; ".join(cookie_parts)
+                            self._cookie = "; ".join(cookie_parts)
+                            self._headers["Cookie"] = "; ".join(cookie_parts)
 
-                        # 尝试解析用户信息
-                        user_info = data.get("data", {}).get("user_info", {})
-                        if user_info:
-                            result["user_info"] = {
-                                "user_id": str(user_info.get("uid", "") or user_info.get("user_id", "")),
-                                "nickname": user_info.get("nickname", ""),
-                                "avatar": user_info.get("avatar", {}).get("url_list", [""])[0] if isinstance(user_info.get("avatar"), dict) else "",
-                            }
-                        else:
-                            result["user_info"] = {
-                                "nickname": data.get("data", {}).get("nickname", ""),
-                            }
+                        result["status"] = 3  # 标记为成功
+                        nick = await self.get_user_name()
+                        uid = await self.get_user_id()
+                        result["user_info"] = {
+                            "user_id": uid or "",
+                            "nickname": nick or "",
+                        }
 
                     return result
             except Exception as e:
