@@ -21,12 +21,8 @@ from astrbot.api.message_components import Image, Plain
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.provider import ProviderRequest
 
+from .core import config as _config
 from .core.config import (
-    init_data_dir,
-    REPLIED_AT_FILE, AFFECTION_FILE, MEMORY_FILE,
-    MOOD_FILE, PERSONALITY_FILE, SCHEDULE_FILE,
-    PROACTIVE_TRIGGER_LOG_FILE, WATCH_HISTORY_FILE,
-    BLACKLIST_FILE, USER_PROFILE_FILE, CONSOLIDATION_FILE,
     AFFECTION_STRANGER, AFFECTION_FAN, AFFECTION_ACQUAINTANCE,
     AFFECTION_FRIEND, AFFECTION_INTERACT, AFFECTION_LIKE,
     AFFECTION_REPLY_POSITIVE, AFFECTION_REPLY_NEGATIVE,
@@ -57,7 +53,7 @@ class DouyinBot(Star):
         super().__init__(context)
         self.config = config or {}
         # 初始化数据目录（延迟到有了 StarTools 之后）
-        init_data_dir(StarTools.get_data_dir())
+        _config.init_data_dir(StarTools.get_data_dir())
 
         # 运行状态
         self._running = False
@@ -87,19 +83,19 @@ class DouyinBot(Star):
         # 初始化核心组件
         cookie = (self.config.get("DOUYIN_COOKIE") or "").strip()
         self.api = DouyinAPI(cookie)
-        self._affection_file = AFFECTION_FILE
-        self._replied_at_file = REPLIED_AT_FILE
+        self._affection_file = _config.AFFECTION_FILE
+        self._replied_at_file = _config.REPLIED_AT_FILE
         self.reply_engine = ReplyEngine(
             self,
-            affection_file=AFFECTION_FILE,
-            replied_at_file=REPLIED_AT_FILE,
-            mood_file=MOOD_FILE,
-            memory_file=MEMORY_FILE,
-            blacklist_file=BLACKLIST_FILE,
+            affection_file=_config.AFFECTION_FILE,
+            replied_at_file=_config.REPLIED_AT_FILE,
+            mood_file=_config.MOOD_FILE,
+            memory_file=_config.MEMORY_FILE,
+            blacklist_file=_config.BLACKLIST_FILE,
         )
 
         # 自动加载已回复集合
-        self._replied_at = set(load_json(REPLIED_AT_FILE, []))
+        self._replied_at = set(load_json(_config.REPLIED_AT_FILE, []))
 
         # 自动启动（如果有 Cookie）
         if self.api.has_cookie:
@@ -373,7 +369,7 @@ class DouyinBot(Star):
         """保存对话记忆。"""
         if not user_id:
             return
-        memories = load_json(MEMORY_FILE, [])
+        memories = load_json(_config.MEMORY_FILE, [])
         # 简单关键词提取
         keywords = [w for w in comment.split() if len(w) >= 2][:5]
         entry = {
@@ -387,7 +383,7 @@ class DouyinBot(Star):
         }
         memories.append(entry)
         # 只保留最近 2000 条
-        save_json(MEMORY_FILE, memories[-2000:])
+        save_json(_config.MEMORY_FILE, memories[-2000:])
 
     # ── 主动行为调度 ──
 
@@ -395,13 +391,13 @@ class DouyinBot(Star):
         """检查并触发主动刷视频行为。"""
         now_dt = datetime.now()
         today_str = now_dt.strftime("%Y-%m-%d")
-        sched = load_json(SCHEDULE_FILE, {})
+        sched = load_json(_config.SCHEDULE_FILE, {})
 
         if sched.get("date") != today_str:
             times_count = self.config.get("PROACTIVE_TIMES_COUNT", 3)
             self._proactive_times = random_schedule_time(times_count)
             self._proactive_triggered = set()
-            save_json(SCHEDULE_FILE, {
+            save_json(_config.SCHEDULE_FILE, {
                 "date": today_str,
                 "times": self._proactive_times,
                 "triggered": list(self._proactive_triggered),
@@ -419,19 +415,19 @@ class DouyinBot(Star):
                 if self._proactive_task is None or self._proactive_task.done():
                     self._proactive_task = asyncio.create_task(self._run_proactive())
                     self._proactive_triggered.add(key)
-                    save_json(SCHEDULE_FILE, {
+                    save_json(_config.SCHEDULE_FILE, {
                         "date": today_str,
                         "times": self._proactive_times,
                         "triggered": list(self._proactive_triggered),
                     })
-                    trigger_log = load_json(PROACTIVE_TRIGGER_LOG_FILE, [])
+                    trigger_log = load_json(_config.PROACTIVE_TRIGGER_LOG_FILE, [])
                     trigger_log.append({
                         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "type": "proactive",
                         "scheduled": key,
                         "status": "triggered",
                     })
-                    save_json(PROACTIVE_TRIGGER_LOG_FILE, trigger_log[-200:])
+                    save_json(_config.PROACTIVE_TRIGGER_LOG_FILE, trigger_log[-200:])
                     logger.info(f"[DouyinBot] 触发主动刷视频（{key}）")
                     break
 
@@ -512,7 +508,7 @@ class DouyinBot(Star):
                             logger.info(f"[DouyinBot]   ➕ 已关注: {author}")
 
                     # 保存观看历史
-                    history = load_json(WATCH_HISTORY_FILE, [])
+                    history = load_json(_config.WATCH_HISTORY_FILE, [])
                     history.append({
                         "aweme_id": aweme_id,
                         "desc": desc,
@@ -520,7 +516,7 @@ class DouyinBot(Star):
                         "score": score,
                         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     })
-                    save_json(WATCH_HISTORY_FILE, history[-500:])
+                    save_json(_config.WATCH_HISTORY_FILE, history[-500:])
 
                     await asyncio.sleep(5)  # 操作间隔
                 except Exception as e:
@@ -574,7 +570,7 @@ class DouyinBot(Star):
         # 统计
         replies_count = len(self._replied_at)
         lines.append(f"已回复评论: {replies_count}")
-        aff = load_json(AFFECTION_FILE, {})
+        aff = load_json(_config.AFFECTION_FILE, {})
         lines.append(f"好感度记录: {len(aff)} 人")
 
         lines.append("━━━━━━━━━━━━━━")
@@ -664,7 +660,7 @@ class DouyinBot(Star):
     @dy.command("好感")
     async def affection(self, event: AstrMessageEvent, uid: str = ""):
         """查看好感度。"""
-        aff = load_json(AFFECTION_FILE, {})
+        aff = load_json(_config.AFFECTION_FILE, {})
         if uid:
             score = aff.get(str(uid), 0)
             level = get_affection_level(score)
@@ -696,7 +692,7 @@ class DouyinBot(Star):
         if not keyword:
             yield event.plain_result("用法: /dy 记忆 <关键词>")
             return
-        memories = load_json(MEMORY_FILE, [])
+        memories = load_json(_config.MEMORY_FILE, [])
         if not memories:
             yield event.plain_result("📝 暂无记忆")
             return
@@ -738,7 +734,7 @@ class DouyinBot(Star):
     @dy.command("黑名单")
     async def blacklist_list(self, event: AstrMessageEvent):
         """查看黑名单。"""
-        bl = load_json(BLACKLIST_FILE, [])
+        bl = load_json(_config.BLACKLIST_FILE, [])
         if not bl:
             yield event.plain_result("📝 黑名单为空")
             return
@@ -747,7 +743,7 @@ class DouyinBot(Star):
     @dy.command("日志")
     async def log(self, event: AstrMessageEvent):
         """查看主动行为日志。"""
-        logs = load_json(PROACTIVE_TRIGGER_LOG_FILE, [])
+        logs = load_json(_config.PROACTIVE_TRIGGER_LOG_FILE, [])
         if not logs:
             yield event.plain_result("📝 暂无日志")
             return
@@ -764,10 +760,10 @@ class DouyinBot(Star):
     @dy.command("统计")
     async def stats(self, event: AstrMessageEvent):
         """查看统计数据。"""
-        aff = load_json(AFFECTION_FILE, {})
-        memories = load_json(MEMORY_FILE, [])
-        history = load_json(WATCH_HISTORY_FILE, [])
-        bl = load_json(BLACKLIST_FILE, [])
+        aff = load_json(_config.AFFECTION_FILE, {})
+        memories = load_json(_config.MEMORY_FILE, [])
+        history = load_json(_config.WATCH_HISTORY_FILE, [])
+        bl = load_json(_config.BLACKLIST_FILE, [])
         text = (
             "📊 抖音 Bot 统计\n"
             f"━━━━━━━━━━━━━━\n"
@@ -887,11 +883,11 @@ class DouyinBot(Star):
 
     async def _web_stats(self):
         """返回插件统计数据。"""
-        aff = load_json(AFFECTION_FILE, {})
-        memories = load_json(MEMORY_FILE, [])
-        history = load_json(WATCH_HISTORY_FILE, [])
-        bl = load_json(BLACKLIST_FILE, [])
-        logs = load_json(PROACTIVE_TRIGGER_LOG_FILE, [])
+        aff = load_json(_config.AFFECTION_FILE, {})
+        memories = load_json(_config.MEMORY_FILE, [])
+        history = load_json(_config.WATCH_HISTORY_FILE, [])
+        bl = load_json(_config.BLACKLIST_FILE, [])
+        logs = load_json(_config.PROACTIVE_TRIGGER_LOG_FILE, [])
 
         from astrbot.api.web import json_response
         return json_response({
@@ -990,7 +986,7 @@ class DouyinBot(Star):
         log_lines = []
         try:
             # 尝试从插件数据目录读取日志
-            log_file = REPLIED_AT_FILE.parent / "plugin.log"
+            log_file = _config.REPLIED_AT_FILE.parent / "plugin.log"
             if log_file.exists():
                 with open(log_file, "r", encoding="utf-8") as f:
                     lines = f.readlines()
