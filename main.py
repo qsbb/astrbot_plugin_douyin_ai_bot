@@ -80,8 +80,15 @@ class DouyinBot(Star):
         self._proactive_times: list[tuple[int, int]] = []
         self._proactive_triggered: set[str] = set()
 
-        # 初始化核心组件
+        # 初始化核心组件（优先从 config 读取，其次从文件读取）
         cookie = (self.config.get("DOUYIN_COOKIE") or "").strip()
+        if not cookie and _config.COOKIE_FILE and _config.COOKIE_FILE.exists():
+            try:
+                cookie = _config.COOKIE_FILE.read_text(encoding="utf-8").strip()
+                if cookie:
+                    logger.info("[DouyinBot] 从文件加载 Cookie")
+            except Exception:
+                pass
         self.api = DouyinAPI(cookie)
         self._affection_file = _config.AFFECTION_FILE
         self._replied_at_file = _config.REPLIED_AT_FILE
@@ -531,6 +538,16 @@ class DouyinBot(Star):
         """获取 Bot 自身抖音 UID。"""
         return self.config.get("DEDE_USER_ID", "") or self.api._user_id or ""
 
+    def _save_cookie(self, cookie: str):
+        """保存 Cookie 到 AstrBot 配置和本地文件。"""
+        self.config["DOUYIN_COOKIE"] = cookie
+        self.api.update_cookie(cookie)
+        if _config.COOKIE_FILE:
+            try:
+                _config.COOKIE_FILE.write_text(cookie, encoding="utf-8")
+            except Exception as e:
+                logger.warning(f"[DouyinBot] Cookie 写入文件失败: {e}")
+
     # ══════════════════════════════════════════
     # 指令组
     # ══════════════════════════════════════════
@@ -609,8 +626,7 @@ class DouyinBot(Star):
                 "→ Application → Cookies → 复制全部 Cookie 字符串"
             )
             return
-        self.api.update_cookie(cookie)
-        self.config["DOUYIN_COOKIE"] = cookie
+        self._save_cookie(cookie)
         valid, info = await self.api.check_cookie()
         if valid:
             yield event.plain_result(f"✅ Cookie 设置成功！\n{info}")
@@ -933,12 +949,14 @@ class DouyinBot(Star):
         """获取当前 Cookie（部分掩码）。"""
         from astrbot.api.web import json_response
         cookie = self.api._cookie or ""
-        # 只显示前 30 个字符 + 掩码
         masked = cookie[:30] + "******" if len(cookie) > 30 else cookie
+        file_exists = _config.COOKIE_FILE and _config.COOKIE_FILE.exists()
         return json_response({
             "configured": bool(cookie),
             "cookie_masked": masked,
             "cookie_length": len(cookie),
+            "cookie_file": str(_config.COOKIE_FILE) if _config.COOKIE_FILE else "",
+            "cookie_file_exists": file_exists,
         })
 
     async def _web_set_cookie(self):
@@ -950,9 +968,8 @@ class DouyinBot(Star):
             if not cookie:
                 return error_response("缺少 cookie 字段", status_code=400)
 
-            # 保存到配置和 API
-            self.config["DOUYIN_COOKIE"] = cookie
-            self.api.update_cookie(cookie)
+            # 保存到配置和文件
+            self._save_cookie(cookie)
 
             # 验证
             valid, msg = await self.api.check_cookie()

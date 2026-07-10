@@ -17,10 +17,12 @@ def init_data_dir(data_dir: Path) -> None:
         REPLIED_AT_FILE, AFFECTION_FILE, MEMORY_FILE, \
         MOOD_FILE, PERSONALITY_FILE, SCHEDULE_FILE, \
         PROACTIVE_TRIGGER_LOG_FILE, WATCH_HISTORY_FILE, \
-        BLACKLIST_FILE, USER_PROFILE_FILE, CONSOLIDATION_FILE
+        BLACKLIST_FILE, USER_PROFILE_FILE, CONSOLIDATION_FILE, \
+        COOKIE_FILE
     _DATA_DIR = data_dir
     _DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+    COOKIE_FILE = _DATA_DIR / "douyin_cookie.txt"
     REPLIED_AT_FILE = _DATA_DIR / "replied_at.json"
     AFFECTION_FILE = _DATA_DIR / "affection.json"
     MEMORY_FILE = _DATA_DIR / "memory.json"
@@ -36,6 +38,7 @@ def init_data_dir(data_dir: Path) -> None:
 
 
 # 数据文件（在 init_data_dir 中被赋值）
+COOKIE_FILE: Path = None
 REPLIED_AT_FILE: Path = None
 AFFECTION_FILE: Path = None
 MEMORY_FILE: Path = None
