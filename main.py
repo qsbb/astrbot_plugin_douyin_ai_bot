@@ -99,6 +99,22 @@ class DouyinBot(Star):
             f"主人: {self.config.get('OWNER_NAME', '未设置')}"
         )
 
+        # ── Web 管理面板 API ──
+        try:
+            from astrbot.api.web import json_response, error_response
+            self._WEB_AVAILABLE = True
+        except ImportError:
+            self._WEB_AVAILABLE = False
+            json_response = error_response = None
+        if self._WEB_AVAILABLE:
+            try:
+                self._register_web_apis(context)
+                logger.info("[DouyinBot] 已注册 Web 管理面板 API")
+            except Exception as e:
+                logger.warning(f"[DouyinBot] Web API 注册失败: {e}")
+        else:
+            logger.info("[DouyinBot] 当前 AstrBot 版本不支持 Plugin Pages，跳过 Web 面板")
+
     # ── 生命周期 ──
 
     async def terminate(self):
@@ -797,3 +813,200 @@ class DouyinBot(Star):
                     )
                     yield event.plain_result(text)
                     return
+
+    # ══════════════════════════════════════════
+    # Web 管理面板 API
+    # ══════════════════════════════════════════
+
+    PLUGIN_NAME = "astrbot_plugin_douyin_ai_bot"
+
+    def _register_web_apis(self, context: Context) -> None:
+        """注册 Web 管理面板 API 路由。"""
+        context.register_web_api(
+            f"/{self.PLUGIN_NAME}/status", self._web_status, ["GET"], "插件状态"
+        )
+        context.register_web_api(
+            f"/{self.PLUGIN_NAME}/stats", self._web_stats, ["GET"], "插件统计"
+        )
+        context.register_web_api(
+            f"/{self.PLUGIN_NAME}/qrcode", self._web_qrcode, ["GET"], "获取登录二维码"
+        )
+        context.register_web_api(
+            f"/{self.PLUGIN_NAME}/qrcode/check", self._web_qrcode_check, ["GET"], "检查二维码状态"
+        )
+        context.register_web_api(
+            f"/{self.PLUGIN_NAME}/cookie", self._web_get_cookie, ["GET"], "获取当前 Cookie"
+        )
+        context.register_web_api(
+            f"/{self.PLUGIN_NAME}/cookie", self._web_set_cookie, ["POST"], "设置 Cookie"
+        )
+        context.register_web_api(
+            f"/{self.PLUGIN_NAME}/logs", self._web_logs, ["GET"], "插件日志"
+        )
+        context.register_web_api(
+            f"/{self.PLUGIN_NAME}/start", self._web_start, ["POST"], "启动 Bot"
+        )
+        context.register_web_api(
+            f"/{self.PLUGIN_NAME}/stop", self._web_stop, ["POST"], "停止 Bot"
+        )
+
+    async def _web_status(self):
+        """返回插件状态 JSON。"""
+        valid = False
+        user_info = None
+        if self.api.has_cookie:
+            valid, msg = await self.api.check_cookie()
+            uname = await self.api.get_user_name()
+            uid = await self.api.get_user_id()
+            user_info = {"user_id": uid, "nickname": uname or ""}
+
+        from astrbot.api.web import json_response
+        return json_response({
+            "cookie_configured": self.api.has_cookie,
+            "cookie_valid": valid,
+            "user_info": user_info,
+            "running": self._running,
+            "reply_enabled": self.config.get("ENABLE_REPLY", True),
+            "proactive_enabled": self.config.get("ENABLE_PROACTIVE", False),
+            "affection_enabled": self.config.get("ENABLE_AFFECTION", True),
+            "memory_enabled": self.config.get("ENABLE_MEMORY", True),
+            "mood_enabled": self.config.get("ENABLE_MOOD", True),
+            "share_parse_enabled": self.config.get("ENABLE_SHARE_PARSE", False),
+            "owner_name": self.config.get("OWNER_NAME", ""),
+            "llm_provider": self.config.get("LLM_PROVIDER_ID", ""),
+            "poll_interval": self.config.get("POLL_INTERVAL", 30),
+            "reply_probability": self.config.get("REPLY_PROBABILITY_PERCENT", 80),
+            "mood": self.reply_engine.get_or_refresh_mood() if hasattr(self, 'reply_engine') else "",
+            "replied_count": len(self._replied_at),
+        })
+
+    async def _web_stats(self):
+        """返回插件统计数据。"""
+        aff = load_json(AFFECTION_FILE, {})
+        memories = load_json(MEMORY_FILE, [])
+        history = load_json(WATCH_HISTORY_FILE, [])
+        bl = load_json(BLACKLIST_FILE, [])
+        logs = load_json(PROACTIVE_TRIGGER_LOG_FILE, [])
+
+        from astrbot.api.web import json_response
+        return json_response({
+            "replied_count": len(self._replied_at),
+            "affection_users": len(aff),
+            "memory_entries": len(memories),
+            "watch_history": len(history),
+            "blacklist_count": len(bl),
+            "proactive_logs": len(logs),
+            "running": self._running,
+            "uptime": int(time.time()) if self._running else 0,
+        })
+
+    async def _web_qrcode(self):
+        """获取登录二维码。"""
+        from astrbot.api.web import json_response, error_response
+        try:
+            result = await self.api.get_qrcode()
+            if result:
+                return json_response({
+                    "ok": True,
+                    "token": result["token"],
+                    "qrcode_url": result["qrcode_url"],
+                    "qrcode_img_url": result["qrcode_img_url"],
+                })
+            return error_response("获取二维码失败", status_code=500)
+        except Exception as e:
+            logger.error(f"[DouyinBot] QR 码 API 异常: {e}")
+            return error_response(str(e), status_code=500)
+
+    async def _web_qrcode_check(self):
+        """检查二维码扫描状态。"""
+        from astrbot.api.web import json_response, error_response
+        from astrbot.api.star import request
+        try:
+            token = request.query.get("token", "")
+            if not token:
+                return error_response("缺少 token 参数", status_code=400)
+            result = await self.api.check_qrcode(token)
+            return json_response(result)
+        except Exception as e:
+            logger.error(f"[DouyinBot] QR 码检查 API 异常: {e}")
+            return error_response(str(e), status_code=500)
+
+    async def _web_get_cookie(self):
+        """获取当前 Cookie（部分掩码）。"""
+        from astrbot.api.web import json_response
+        cookie = self.api._cookie or ""
+        # 只显示前 30 个字符 + 掩码
+        masked = cookie[:30] + "******" if len(cookie) > 30 else cookie
+        return json_response({
+            "configured": bool(cookie),
+            "cookie_masked": masked,
+            "cookie_length": len(cookie),
+        })
+
+    async def _web_set_cookie(self):
+        """设置 Cookie（来自 QR 扫码登录或手动输入）。"""
+        from astrbot.api.web import json_response, error_response
+        from astrbot.api.star import request
+        try:
+            payload = await request.json(default={}) or {}
+            cookie = (payload.get("cookie") or "").strip()
+            if not cookie:
+                return error_response("缺少 cookie 字段", status_code=400)
+
+            # 保存到配置和 API
+            self.config["DOUYIN_COOKIE"] = cookie
+            self.api.update_cookie(cookie)
+
+            # 验证
+            valid, msg = await self.api.check_cookie()
+            if valid:
+                # 自动保存到配置（持久化由 AstrBot 负责）
+                uname = await self.api.get_user_name()
+                return json_response({
+                    "ok": True,
+                    "valid": True,
+                    "message": f"Cookie 设置成功！用户: {uname}",
+                    "user_name": uname,
+                })
+            else:
+                return json_response({
+                    "ok": True,
+                    "valid": False,
+                    "message": f"Cookie 已设置但验证失败: {msg}",
+                })
+        except Exception as e:
+            logger.error(f"[DouyinBot] 设置 Cookie API 异常: {e}")
+            return error_response(str(e), status_code=500)
+
+    async def _web_logs(self):
+        """返回插件日志。"""
+        from astrbot.api.web import json_response
+        # 读取 astrbot 日志文件中与本插件相关的最近日志
+        log_lines = []
+        try:
+            # 尝试从插件数据目录读取日志
+            log_file = DATA_DIR / "plugin.log"
+            if log_file.exists():
+                with open(log_file, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    log_lines = lines[-100:]  # 最近 100 行
+        except Exception:
+            pass
+        return json_response({"logs": log_lines, "count": len(log_lines)})
+
+    async def _web_start(self):
+        """启动 Bot。"""
+        from astrbot.api.web import json_response, error_response
+        if self._running:
+            return json_response({"ok": True, "message": "Bot 已在运行"})
+        valid, info = await self.api.check_cookie()
+        if not valid:
+            return error_response(f"Cookie 无效: {info}", status_code=400)
+        await self._start_bot()
+        return json_response({"ok": True, "message": "Bot 已启动"})
+
+    async def _web_stop(self):
+        """停止 Bot。"""
+        from astrbot.api.web import json_response
+        await self._stop_bot()
+        return json_response({"ok": True, "message": "Bot 已停止"})

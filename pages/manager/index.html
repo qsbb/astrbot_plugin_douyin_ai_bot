@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>抖音 AI Bot · 管理面板</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <h1>🎬 抖音 <span>AI Bot</span></h1>
+      <div class="actions">
+        <button id="btn-refresh" type="button" title="刷新状态">🔄 刷新</button>
+        <button id="btn-qrcode" type="button" class="primary" title="扫码登录抖音">📱 扫码登录</button>
+        <button id="btn-start" type="button" class="success" title="启动 Bot">▶ 启动</button>
+        <button id="btn-stop" type="button" class="danger" title="停止 Bot">⏹ 停止</button>
+      </div>
+    </div>
+    <p class="subtitle">状态监控 · 扫码登录 · Cookie 管理</p>
+  </header>
+
+  <main>
+    <!-- 统计卡片 -->
+    <section id="stats" class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">运行状态</div>
+        <div class="stat-value" id="stat-running">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">登录状态</div>
+        <div class="stat-value" id="stat-cookie">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">已回复评论</div>
+        <div class="stat-value" id="stat-replied">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">好感度用户</div>
+        <div class="stat-value" id="stat-affection">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">记忆条目</div>
+        <div class="stat-value" id="stat-memory">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">黑名单</div>
+        <div class="stat-value" id="stat-blacklist">—</div>
+      </div>
+    </section>
+
+    <!-- 详细状态 -->
+    <section class="status-section">
+      <h2>📋 详细状态</h2>
+      <div id="detail-status" class="status-grid">
+        <div class="status-item"><span class="label">Bot 运行中</span><span class="value" id="det-running">—</span></div>
+        <div class="status-item"><span class="label">Cookie 有效</span><span class="value" id="det-cookie">—</span></div>
+        <div class="status-item"><span class="label">登录用户</span><span class="value" id="det-user">—</span></div>
+        <div class="status-item"><span class="label">评论回复</span><span class="value" id="det-reply">—</span></div>
+        <div class="status-item"><span class="label">主动行为</span><span class="value" id="det-proactive">—</span></div>
+        <div class="status-item"><span class="label">好感度系统</span><span class="value" id="det-affection">—</span></div>
+        <div class="status-item"><span class="label">语义记忆</span><span class="value" id="det-memory">—</span></div>
+        <div class="status-item"><span class="label">心情系统</span><span class="value" id="det-mood">—</span></div>
+        <div class="status-item"><span class="label">分享解析</span><span class="value" id="det-share">—</span></div>
+        <div class="status-item"><span class="label">今日心情</span><span class="value" id="det-mood-text">—</span></div>
+        <div class="status-item"><span class="label">轮询间隔</span><span class="value" id="det-interval">—</span></div>
+        <div class="status-item"><span class="label">回复概率</span><span class="value" id="det-probability">—</span></div>
+        <div class="status-item"><span class="label">已回复数</span><span class="value" id="det-replied-count">—</span></div>
+        <div class="status-item"><span class="label">主人</span><span class="value" id="det-owner">—</span></div>
+      </div>
+    </section>
+
+    <!-- Cookie 信息 -->
+    <section class="status-section">
+      <h2>🍪 Cookie 信息</h2>
+      <div id="cookie-info">
+        <p style="color: var(--text-muted);">点击「扫码登录」按钮通过抖音 App 扫码获取 Cookie</p>
+      </div>
+    </section>
+
+    <!-- 日志 -->
+    <section class="log-section">
+      <h2>📜 插件日志</h2>
+      <div id="log-content" class="log-content">
+        <div class="empty">点击「刷新」加载日志</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- QR 码弹窗 -->
+  <div id="qrcode-modal" class="modal-overlay">
+    <div class="modal">
+      <h2>📱 抖音扫码登录</h2>
+      <p>打开抖音 App 扫描下方二维码完成登录</p>
+      <div class="qrcode-container" id="qrcode-container">
+        <div class="placeholder">正在生成二维码...</div>
+      </div>
+      <div class="qr-status" id="qr-status">等待扫码...</div>
+      <div class="modal-actions">
+        <button id="btn-qr-close" type="button">关闭</button>
+        <button id="btn-qr-refresh" type="button" class="primary">刷新二维码</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "pages": {
+    "manager": {
+      "title": "抖音管理",
+      "description": "查看插件状态、扫码登录获取 Cookie、启动/停止 Bot"
+    }
+  }
+}

@@ -41,6 +41,10 @@ API_DIGG = "https://www.douyin.com/aweme/v1/web/commit/item/digg/?"
 API_SHARE_INFO = "https://www.douyin.com/aweme/v1/web/aweme/share/info/?"
 API_LIVE_INFO = "https://www.douyin.com/aweme/v1/web/live/info/?"
 
+# QR 码登录 API
+API_QR_CODE = "https://www.douyin.com/aweme/v1/web/qrcode/?"
+API_QR_CHECK = "https://www.douyin.com/aweme/v1/web/qrcode/check/?"
+
 # Cookie 有效性检查 URL
 COOKIE_CHECK_URL = "https://www.douyin.com/aweme/v1/web/im/partner/list/"
 
@@ -425,3 +429,123 @@ class DouyinAPI:
             rooms = data.get("data", {}).get("rooms", [])
             return rooms[0] if rooms else None
         return None
+
+    # ── QR 码登录 ──
+
+    async def get_qrcode(self) -> Optional[dict]:
+        """获取登录二维码信息。
+        
+        Returns:
+            {token, qrcode_url, qrcode_img_url} 或 None
+        """
+        params = {
+            "aid": "24",
+            "app_name": "aweme",
+            "service": "https://www.douyin.com",
+            "need_external": "1",
+        }
+        # 使用独立 session（不携带 Cookie），因为这是登录前操作
+        async with aiohttp.ClientSession(
+            headers={
+                "User-Agent": USER_AGENT,
+                "Referer": DOUYIN_BASE + "/",
+            },
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as session:
+            try:
+                async with session.get(API_QR_CODE + urlencode(params)) as resp:
+                    data = await resp.json()
+                    if data.get("status_code") == 0:
+                        qr_data = data.get("data", {})
+                        token = qr_data.get("token", "")
+                        qrcode_url = qr_data.get("qrcode_url", "")
+                        # 抖音返回的 qrcode_url 可能是短链，也可能是图片 URL
+                        # 使用第三方 QR 生成服务或者直接返回 token 让前端处理
+                        return {
+                            "token": token,
+                            "qrcode_url": qrcode_url,
+                            "qrcode_img_url": qrcode_url,  # 可直接用于 <img> 或 iframe
+                        }
+                    logger.warning(f"[DouyinAPI] 获取 QR 码失败: {data.get('status_msg', '')}")
+                    return None
+            except Exception as e:
+                logger.error(f"[DouyinAPI] QR 码请求异常: {e}")
+                return None
+
+    async def check_qrcode(self, token: str) -> dict:
+        """检查二维码扫描状态。
+        
+        Returns:
+            {status, status_msg, cookies?, user_info?}
+            status: 0=等待扫码, 1=已扫描待确认, 2=已过期, 3=登录成功
+        """
+        params = {
+            "aid": "24",
+            "app_name": "aweme",
+            "token": token,
+            "service": "https://www.douyin.com",
+        }
+        async with aiohttp.ClientSession(
+            headers={
+                "User-Agent": USER_AGENT,
+                "Referer": DOUYIN_BASE + "/",
+            },
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as session:
+            try:
+                async with session.get(API_QR_CHECK + urlencode(params)) as resp:
+                    data = await resp.json()
+                    status_code = data.get("status_code", -1)
+                    result = {
+                        "status": status_code,
+                        "status_msg": data.get("status_msg", ""),
+                    }
+
+                    # status_code=3 表示登录成功，从 response cookies 中提取
+                    if status_code == 3:
+                        # 从响应头中提取 Set-Cookie
+                        set_cookies = resp.headers.getall("Set-Cookie", [])
+                        if not set_cookies:
+                            # 兼容不同版本的 aiohttp
+                            set_cookies = resp.headers.get("Set-Cookie", "")
+                            if isinstance(set_cookies, str):
+                                set_cookies = [set_cookies]
+
+                        cookie_parts = []
+                        for sc in set_cookies:
+                            # 取第一个 ';' 之前的 key=value
+                            part = sc.split(";")[0].strip()
+                            if part and "=" in part:
+                                cookie_parts.append(part)
+
+                        if cookie_parts:
+                            result["cookies"] = "; ".join(cookie_parts)
+
+                        # 尝试解析用户信息
+                        user_info = data.get("data", {}).get("user_info", {})
+                        if user_info:
+                            result["user_info"] = {
+                                "user_id": str(user_info.get("uid", "") or user_info.get("user_id", "")),
+                                "nickname": user_info.get("nickname", ""),
+                                "avatar": user_info.get("avatar", {}).get("url_list", [""])[0] if isinstance(user_info.get("avatar"), dict) else "",
+                            }
+                        else:
+                            result["user_info"] = {
+                                "nickname": data.get("data", {}).get("nickname", ""),
+                            }
+
+                    return result
+            except Exception as e:
+                logger.error(f"[DouyinAPI] QR 码检查异常: {e}")
+                return {"status": -1, "status_msg": str(e)}
+
+    async def get_cookie_from_session(self) -> str:
+        """从当前 session 中提取完整 Cookie 字符串。"""
+        session = await self._get_session()
+        cookies = {}
+        for cookie in session.cookie_jar:
+            if cookie.key and cookie.value:
+                cookies[cookie.key] = cookie.value
+        if cookies:
+            return "; ".join(f"{k}={v}" for k, v in cookies.items())
+        return self._cookie or ""
