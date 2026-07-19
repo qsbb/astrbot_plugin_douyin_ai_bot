@@ -1,5 +1,7 @@
 # astrbot_plugin_douyin_ai_bot
 
+> ⚠️ **已弃用** — 该项目已停止维护。由于目前未找到稳定可靠的抖音接口实现方案，无法保证功能正常运作。最后更新于 GitHub 仓库。
+
 抖音 AI Bot 插件 for [AstrBot](https://github.com/AstrBotDevs/AstrBot) — 让你的 AI 角色在抖音评论区"活"起来。
 
 ## ✨ 功能
